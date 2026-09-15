@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Build and test output
+dist/
+coverage/
+
+# Local tool state and caches
+.wrangler/
+.vite/
+.cache/
+
+# TypeScript-generated artifacts
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
+
+# Temporary files and reports
+tmp/
+temp/
+*.tmp
+*.temp
+*.log
+audit.json
+
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Editors and operating systems
+.DS_Store
+.idea/
+.vscode/
+*.swp
