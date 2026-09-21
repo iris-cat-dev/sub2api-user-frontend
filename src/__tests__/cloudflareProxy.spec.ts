@@ -28,6 +28,29 @@ describe('Cloudflare Pages proxy middleware', () => {
     expect(next).toHaveBeenCalledOnce()
   })
 
+  it('does not serve the SPA HTML fallback for a missing built asset', async () => {
+    const response = await onRequest(createContext('/assets/missing-chunk.js', {
+      next: async () => new Response('<!doctype html>', {
+        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+      }),
+    }))
+
+    expect(response.status).toBe(404)
+    expect(response.headers.get('Content-Type')).toBe('text/plain; charset=utf-8')
+    expect(response.headers.get('Cache-Control')).toBe('no-store')
+  })
+
+  it('preserves valid built asset responses', async () => {
+    const response = await onRequest(createContext('/assets/current-chunk.js', {
+      next: async () => new Response('export default true', {
+        headers: { 'Content-Type': 'application/javascript' },
+      }),
+    }))
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('Content-Type')).toBe('application/javascript')
+  })
+
   it.each([
     '/api/v1/admin/users',
     '/api/v1/setup/status',

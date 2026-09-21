@@ -295,6 +295,14 @@ describe('user KeysView column settings', () => {
     createKey.mockResolvedValue({ id: 99, key: 'sk-created', name: 'created' })
   })
 
+  it('shows the Codex Base URL even when public settings omit it', async () => {
+    const wrapper = await mountView()
+
+    expect(wrapper.getComponent({ name: 'EndpointPopover' }).props('apiBaseUrl')).toBe(
+      'https://codex.mintcat.work'
+    )
+  })
+
   it('uses the default API key columns with low-frequency columns hidden', async () => {
     const wrapper = await mountView()
 

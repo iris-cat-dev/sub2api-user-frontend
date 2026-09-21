@@ -103,7 +103,6 @@
               <h2>{{ group.label }}</h2>
               <p>{{ t('modelPricing.groupCount', { count: group.models.length }) }}</p>
             </div>
-            <span v-if="group.rate != null" class="pricing-rate-badge">×{{ formatRate(group.rate) }}</span>
           </header>
 
           <div class="pricing-table-wrap">
@@ -116,6 +115,7 @@
                   <th>{{ t('modelPricing.table.output') }}</th>
                   <th>{{ t('modelPricing.table.cacheRead') }}</th>
                   <th>{{ t('modelPricing.table.cacheWrite') }}</th>
+                  <th>{{ t('modelPricing.table.discountRate') }}</th>
                   <th>{{ t('modelPricing.table.unitPrice') }}</th>
                 </tr>
               </thead>
@@ -139,9 +139,17 @@
                     <td><PriceStack :model="model" :rows="tierRows(model)" field="output_price" /></td>
                     <td><PriceStack :model="model" :rows="tierRows(model)" field="cache_read_price" /></td>
                     <td><PriceStack :model="model" :rows="tierRows(model)" field="cache_write_price" /></td>
+                    <td>
+                      <div class="pricing-rate-stack">
+                        <div v-for="(tier, index) in tierRows(model)" :key="index">
+                          {{ inputDiscountRate(model, tier, index) }}
+                        </div>
+                      </div>
+                    </td>
                     <td class="pricing-unit">{{ t('modelPricing.units.perMillion') }}</td>
                   </template>
                   <template v-else>
+                    <td class="pricing-muted">—</td>
                     <td class="pricing-muted">—</td>
                     <td class="pricing-muted">—</td>
                     <td class="pricing-muted">—</td>
@@ -202,6 +210,10 @@
                       </span>
                       <strong>{{ formatTokenPrice(tier.cache_write_price) }}</strong>
                     </div>
+                    <div>
+                      <span>{{ t('modelPricing.table.discountRate') }}</span>
+                      <strong>{{ inputDiscountRate(model, tier, index) }}</strong>
+                    </div>
                   </div>
                 </section>
               </div>
@@ -239,7 +251,6 @@ interface CatalogModel extends PlazaModel {
   catalogKey: string
   groupId: number
   groupName: string
-  groupRate: number
 }
 
 type BillingFilter = 'all' | BillingMode
@@ -317,16 +328,12 @@ const filteredModels = computed(() => {
 })
 
 const groupedModels = computed(() => {
-  const groups = new Map<string, { platform: string; label: string; rate: number | null; models: CatalogModel[] }>()
+  const groups = new Map<string, { platform: string; label: string; models: CatalogModel[] }>()
   for (const model of filteredModels.value) {
     const current = groups.get(model.platform) ?? {
       platform: model.platform,
       label: platformLabel(model.platform),
-      rate: model.groupRate,
       models: [],
-    }
-    if (current.models.length > 0 && current.rate !== model.groupRate) {
-      current.rate = null
     }
     current.models.push(model)
     groups.set(model.platform, current)
@@ -336,10 +343,6 @@ const groupedModels = computed(() => {
 
 function modelKey(model: Pick<CatalogModel, 'catalogKey' | 'groupId' | 'platform' | 'name'>): string {
   return model.catalogKey || `${model.groupId}:${model.platform}:${model.name}`.toLocaleLowerCase()
-}
-
-function formatRate(value: number): string {
-  return trimNumber(value)
 }
 
 function resolvePlazaPlatform(model: Pick<PlazaModel, 'platform' | 'name'>): string {
@@ -451,6 +454,12 @@ function officialFieldPrice(model: CatalogModel, field: TokenPriceField, index =
   return official[field] ?? null
 }
 
+function inputDiscountRate(model: CatalogModel, tier: UserPricingInterval, index: number): string {
+  const officialInput = officialFieldPrice(model, 'input_price', index)
+  if (tier.input_price == null || officialInput == null || officialInput <= 0) return '—'
+  return `${trimNumber((tier.input_price / officialInput) * 100)}%`
+}
+
 function formatUnitPrice(value: number | null): string {
   return formatScaled(value, 1, 2)
 }
@@ -476,7 +485,6 @@ async function loadModels() {
   try {
     const plaza = await modelPlazaAPI.getModelPlaza()
     sourceModels.value = (plaza.groups ?? []).flatMap((group) => {
-      const groupRate = group.user_rate_multiplier ?? group.rate_multiplier
       return group.models.map((model) => {
         const platform = resolvePlazaPlatform(model)
         return {
@@ -485,7 +493,6 @@ async function loadModels() {
           catalogKey: `${group.id}:${platform}:${model.name}`.toLocaleLowerCase(),
           groupId: group.id,
           groupName: group.name,
-          groupRate,
         }
       })
     })
@@ -528,7 +535,6 @@ onMounted(loadModels)
 .pricing-platform-mark { display:flex; width:40px; height:40px; align-items:center; justify-content:center; border:1px solid rgba(217,70,239,.2); border-radius:9px; background:#0a1634; }
 .pricing-group-header h2 { color:#fff; font-size:16px; font-weight:700; }
 .pricing-group-header p { margin-top:2px; color:#697596; font-size:11px; }
-.pricing-rate-badge { margin-left:auto; padding:5px 9px; border:1px solid rgba(217,70,239,.24); border-radius:5px; background:#211338; color:#f0abfc; font-family:ui-monospace,SFMono-Regular,monospace; font-size:12px; font-weight:700; }
 .pricing-table-wrap { overflow-x:auto; }
 .pricing-table { width:100%; min-width:1050px; border-collapse:collapse; font-size:12px; }
 .pricing-table th { padding:11px 14px; background:#08132e; color:#617091; font-size:10px; font-weight:800; letter-spacing:.09em; text-align:left; text-transform:uppercase; }
@@ -553,6 +559,7 @@ onMounted(loadModels)
 .pricing-price-line { display:flex; align-items:center; gap:6px; white-space:nowrap; }
 .pricing-price-line span { min-width:38px; color:#657190; font-family:ui-sans-serif,system-ui,sans-serif; font-size:9px; }
 .pricing-price-line strong,.pricing-request-price strong { color:#f0abfc; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; font-weight:700; }
+.pricing-rate-stack { display:grid; gap:6px; color:#f0abfc; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; font-weight:700; white-space:nowrap; }
 .pricing-unit,.pricing-muted { color:#566281 !important; }
 .pricing-request-price span { display:block; margin-top:3px; color:#687494; font-size:9px; }
 .pricing-mobile-list { display:none; }
@@ -596,11 +603,6 @@ onMounted(loadModels)
   border-color:rgba(124,58,237,.16);
   background:#f5f3ff;
 }
-:global(html:not(.dark) .pricing-rate-badge) {
-  border-color:rgba(124,58,237,.2);
-  background:#f3e8ff;
-  color:#7e22ce;
-}
 :global(html:not(.dark) .pricing-table th) {
   background:#f6f8fc;
   color:#667085;
@@ -616,7 +618,8 @@ onMounted(loadModels)
   color:#52617a;
 }
 :global(html:not(.dark) .pricing-price-line strong),
-:global(html:not(.dark) .pricing-request-price strong) { color:#7c3aed; }
+:global(html:not(.dark) .pricing-request-price strong),
+:global(html:not(.dark) .pricing-rate-stack) { color:#7c3aed; }
 :global(html:not(.dark) .pricing-official-price) { color:#98a2b3; }
 @media (max-width: 900px) {
   .pricing-toolbar { flex-direction:column; align-items:stretch; }

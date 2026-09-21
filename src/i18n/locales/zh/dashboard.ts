@@ -743,6 +743,7 @@ export default {
       input: '输入',
       output: '输出',
       cacheRead: '缓存读取',
+      discountRate: '折扣率',
       cacheWrite: '缓存写入',
       unitPrice: '计价单位'
     },

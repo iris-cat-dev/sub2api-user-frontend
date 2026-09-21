@@ -20,6 +20,10 @@ function isProxiedPath(pathname: string): boolean {
   return pathname === '/api' || pathname.startsWith('/api/') || pathname === '/v1' || pathname.startsWith('/v1/')
 }
 
+function isAssetPath(pathname: string): boolean {
+  return pathname === '/assets' || pathname.startsWith('/assets/')
+}
+
 function isBlockedPath(pathname: string): boolean {
   return pathname === '/setup'
     || pathname.startsWith('/setup/')
@@ -63,7 +67,26 @@ export async function onRequest(context: PagesContext): Promise<Response> {
   if (normalizedPath === null) return new Response('Bad Request', { status: 400 })
 
   if (isBlockedPath(normalizedPath)) return new Response('Not Found', { status: 404 })
-  if (!isProxiedPath(normalizedPath)) return context.next()
+  if (!isProxiedPath(normalizedPath)) {
+    const response = await context.next()
+    const contentType = response.headers.get('Content-Type')?.toLowerCase() ?? ''
+
+    // The SPA fallback rewrites unknown paths to index.html. Never return that
+    // HTML for a missing hashed asset: browsers reject it as a module and an
+    // edge cache can otherwise preserve the bad 200 response after a deploy.
+    if (isAssetPath(normalizedPath) && contentType.includes('text/html')) {
+      return new Response('Not Found', {
+        status: 404,
+        headers: {
+          'Cache-Control': 'no-store',
+          'Content-Type': 'text/plain; charset=utf-8',
+          'X-Content-Type-Options': 'nosniff',
+        },
+      })
+    }
+
+    return response
+  }
 
   const configuredUpstream = context.env.API_UPSTREAM?.trim()
   if (!configuredUpstream) return new Response('API upstream is not configured', { status: 503 })

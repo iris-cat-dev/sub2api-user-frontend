@@ -739,6 +739,7 @@ export default {
       input: 'Input',
       output: 'Output',
       cacheRead: 'Cache read',
+      discountRate: 'Discount',
       cacheWrite: 'Cache write',
       unitPrice: 'Price unit'
     },

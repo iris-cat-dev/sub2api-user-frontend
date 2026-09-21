@@ -119,6 +119,8 @@ describe('ModelPricingView', () => {
     expect(wrapper.text()).toContain('¥3.00')
     expect(wrapper.text()).toContain('¥15.00')
     expect(wrapper.find('.pricing-official-price').text()).toBe('¥15.00')
+    expect(wrapper.text()).toContain('20%')
+    expect(wrapper.find('.pricing-rate-badge').exists()).toBe(false)
     expect(wrapper.text()).toContain('¥0.25')
     expect(wrapper.text()).not.toContain('composite')
   })
