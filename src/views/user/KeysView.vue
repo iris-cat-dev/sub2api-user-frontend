@@ -73,7 +73,7 @@
               </button>
             </div>
           </div>
-          <button @click="showCreateModal = true" class="btn btn-primary" data-tour="keys-create-btn">
+          <button @click="openCreateModal" class="btn btn-primary" data-tour="keys-create-btn">
             <Icon name="plus" size="md" class="mr-2" />
             {{ t('keys.createKey') }}
           </button>
@@ -426,7 +426,7 @@
               :title="t('keys.noKeysYet')"
               :description="t('keys.createFirstKey')"
               :action-text="t('keys.createKey')"
-              @action="showCreateModal = true"
+              @action="openCreateModal"
             />
           </template>
         </DataTable>
@@ -467,6 +467,7 @@
         <div>
           <label class="input-label">{{ t('keys.groupLabel') }}</label>
           <Select
+            v-if="showEditModal"
             v-model="formData.group_id"
             :options="groupOptions"
             :placeholder="t('keys.selectGroup')"
@@ -505,6 +506,27 @@
               />
             </template>
           </Select>
+          <div
+            v-else
+            class="flex min-h-[42px] items-center rounded-lg border border-gray-200 bg-gray-50 px-3 dark:border-dark-600 dark:bg-dark-700"
+            data-tour="key-form-group"
+          >
+            <GroupBadge
+              v-if="fixedCreateGroupOption"
+              :name="fixedCreateGroupOption.label"
+              :platform="fixedCreateGroupOption.platform"
+              :subscription-type="fixedCreateGroupOption.subscriptionType"
+              :rate-multiplier="fixedCreateGroupOption.rate"
+              :user-rate-multiplier="fixedCreateGroupOption.userRate"
+              :peak-rate-enabled="fixedCreateGroupOption.peakRateEnabled"
+              :peak-start="fixedCreateGroupOption.peakStart"
+              :peak-end="fixedCreateGroupOption.peakEnd"
+              :peak-rate-multiplier="fixedCreateGroupOption.peakRateMultiplier"
+            />
+            <span v-else class="text-sm text-gray-500 dark:text-gray-400">
+              {{ t('keys.fixedCreateGroupMissing') }}
+            </span>
+          </div>
         </div>
 
         <!-- Custom Key Section (only for create) -->
@@ -1408,6 +1430,8 @@ const onStatusFilterChange = (value: string | number | boolean | null) => {
 }
 
 // Convert groups to Select options format with rate multiplier and subscription type
+const FIXED_CREATE_GROUP_NAME = '模型合集'
+
 const groupOptions = computed(() =>
   groups.value.map((group) => ({
     value: group.id,
@@ -1422,6 +1446,14 @@ const groupOptions = computed(() =>
     subscriptionType: group.subscription_type,
     platform: group.platform
   }))
+)
+
+const fixedCreateGroup = computed(
+  () => groups.value.find((group) => group.name === FIXED_CREATE_GROUP_NAME) ?? null
+)
+
+const fixedCreateGroupOption = computed(
+  () => groupOptions.value.find((option) => option.label === FIXED_CREATE_GROUP_NAME) ?? null
 )
 
 // Group dropdown search
@@ -1661,10 +1693,19 @@ const confirmDelete = (key: ApiKey) => {
   showDeleteDialog.value = true
 }
 
+const openCreateModal = () => {
+  showCreateModal.value = true
+}
+
 const handleSubmit = async () => {
-  // Validate group_id is required
-  if (formData.value.group_id === null) {
-    appStore.showError(t('keys.groupRequired'))
+  const selectedGroupId = showEditModal.value
+    ? formData.value.group_id
+    : (fixedCreateGroup.value?.id ?? null)
+
+  if (selectedGroupId === null) {
+    appStore.showError(
+      showEditModal.value ? t('keys.groupRequired') : t('keys.fixedCreateGroupMissing')
+    )
     return
   }
 
@@ -1720,7 +1761,7 @@ const handleSubmit = async () => {
     if (showEditModal.value && selectedKey.value) {
       const updates: UpdateApiKeyRequest = {
         name: formData.value.name,
-        group_id: formData.value.group_id,
+        group_id: selectedGroupId,
         ip_whitelist: ipWhitelist,
         ip_blacklist: ipBlacklist,
         quota: quota,
@@ -1738,7 +1779,7 @@ const handleSubmit = async () => {
       const customKey = formData.value.use_custom_key ? formData.value.custom_key : undefined
       await keysAPI.create(
         formData.value.name,
-        formData.value.group_id,
+        selectedGroupId,
         customKey,
         ipWhitelist,
         ipBlacklist,

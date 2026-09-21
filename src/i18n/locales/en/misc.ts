@@ -174,8 +174,8 @@ export default {
         nextBtn: 'Next'
       },
       keyGroup: {
-        title: '🎯 Select Group',
-        description: '<div style="line-height: 1.7;"><p style="margin-bottom: 12px;">Select the service group assigned by the administrator.</p><p style="padding: 8px 12px; background: #eff6ff; border-left: 3px solid #3b82f6; border-radius: 4px; font-size: 13px;"><b>📌 Group Info:</b><br/>Different groups may have different service quality and billing rates, choose according to your needs.</p></div>',
+        title: '🎯 Assigned Group',
+        description: '<div style="line-height: 1.7;"><p style="margin-bottom: 12px;">New keys are always assigned to the 模型合集 group. You do not need to choose one.</p><p style="padding: 8px 12px; background: #eff6ff; border-left: 3px solid #3b82f6; border-radius: 4px; font-size: 13px;"><b>📌 Group Info:</b><br/>This group covers the available model collection. You can still change the group later from the key list if needed.</p></div>',
         nextBtn: 'Next'
       },
       keySubmit: {

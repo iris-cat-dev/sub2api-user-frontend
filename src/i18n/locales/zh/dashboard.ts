@@ -135,6 +135,7 @@ export default {
     groupChangedSuccess: '分组更换成功',
     failedToChangeGroup: '更换分组失败',
     groupRequired: '请选择分组',
+    fixedCreateGroupMissing: '未找到「模型合集」分组，请联系管理员',
     usage: '用量',
     today: '今日',
     total: '近30天',
@@ -708,8 +709,8 @@ export default {
 
   modelPricing: {
     title: '模型价格',
-    description: '查看当前账户可用的全部模型，所有价格统一按基础 ×1 倍率展示。',
-    searchPlaceholder: '搜索模型或平台',
+    description: '按模型广场分组展示配置价格。',
+    searchPlaceholder: '搜索模型、分组或平台',
     loading: '正在加载模型价格...',
     loadFailed: '模型价格加载失败',
     retry: '重新加载',
@@ -719,6 +720,7 @@ export default {
     baseTier: '基础',
     stats: {
       models: '模型',
+      groups: '分组',
       platforms: '平台',
       priced: '已定价'
     },

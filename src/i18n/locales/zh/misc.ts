@@ -175,9 +175,9 @@ export default {
         nextBtn: '下一步'
       },
       keyGroup: {
-        title: '🎯 选择分组',
+        title: '🎯 固定分组',
         description:
-          '<div style="line-height: 1.7;"><p style="margin-bottom: 12px;">选择管理员为您分配的服务分组。</p><p style="padding: 8px 12px; background: #eff6ff; border-left: 3px solid #3b82f6; border-radius: 4px; font-size: 13px;"><b>📌 分组说明：</b><br/>不同分组可能有不同的服务质量和计费标准，请根据需要选择。</p></div>',
+          '<div style="line-height: 1.7;"><p style="margin-bottom: 12px;">创建密钥将固定使用「模型合集」分组，无需选择。</p><p style="padding: 8px 12px; background: #eff6ff; border-left: 3px solid #3b82f6; border-radius: 4px; font-size: 13px;"><b>📌 分组说明：</b><br/>该分组覆盖可用模型合集，创建后如需调整可在密钥列表中更换。</p></div>',
         nextBtn: '下一步'
       },
       keySubmit: {

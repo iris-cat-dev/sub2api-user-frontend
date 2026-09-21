@@ -103,7 +103,7 @@
               <h2>{{ group.label }}</h2>
               <p>{{ t('modelPricing.groupCount', { count: group.models.length }) }}</p>
             </div>
-            <span class="pricing-rate-badge">×1</span>
+            <span v-if="group.rate != null" class="pricing-rate-badge">×{{ formatRate(group.rate) }}</span>
           </header>
 
           <div class="pricing-table-wrap">
@@ -126,7 +126,8 @@
                       <ModelIcon :model="model.name" size="20px" />
                       <div>
                         <strong>{{ model.name }}</strong>
-                        <span v-if="tierRows(model).length > 1">
+                        <span v-if="plazaGroupCount > 1">{{ model.groupName }}</span>
+                        <span v-else-if="tierRows(model).length > 1">
                           {{ t('modelPricing.tierCount', { count: tierRows(model).length }) }}
                         </span>
                       </div>
@@ -134,10 +135,10 @@
                   </td>
                   <td><span class="pricing-mode-badge">{{ billingModeLabel(model) }}</span></td>
                   <template v-if="billingMode(model) === BILLING_MODE_TOKEN">
-                    <td><PriceStack :rows="tierRows(model)" field="input_price" /></td>
-                    <td><PriceStack :rows="tierRows(model)" field="output_price" /></td>
-                    <td><PriceStack :rows="tierRows(model)" field="cache_read_price" /></td>
-                    <td><PriceStack :rows="tierRows(model)" field="cache_write_price" /></td>
+                    <td><PriceStack :model="model" :rows="tierRows(model)" field="input_price" /></td>
+                    <td><PriceStack :model="model" :rows="tierRows(model)" field="output_price" /></td>
+                    <td><PriceStack :model="model" :rows="tierRows(model)" field="cache_read_price" /></td>
+                    <td><PriceStack :model="model" :rows="tierRows(model)" field="cache_write_price" /></td>
                     <td class="pricing-unit">{{ t('modelPricing.units.perMillion') }}</td>
                   </template>
                   <template v-else>
@@ -160,7 +161,10 @@
               <header>
                 <div class="pricing-model-name">
                   <ModelIcon :model="model.name" size="20px" />
-                  <strong>{{ model.name }}</strong>
+                  <div>
+                    <strong>{{ model.name }}</strong>
+                    <span v-if="plazaGroupCount > 1">{{ model.groupName }}</span>
+                  </div>
                 </div>
                 <span class="pricing-mode-badge">{{ billingModeLabel(model) }}</span>
               </header>
@@ -172,18 +176,30 @@
                   <div class="pricing-mobile-metrics">
                     <div>
                       <span>{{ t('modelPricing.table.input') }}</span>
+                      <span v-if="officialFieldPrice(model, 'input_price', index) != null && officialFieldPrice(model, 'input_price', index) !== tier.input_price" class="pricing-official-price">
+                        {{ formatTokenPrice(officialFieldPrice(model, 'input_price', index)) }}
+                      </span>
                       <strong>{{ formatTokenPrice(tier.input_price) }}</strong>
                     </div>
                     <div>
                       <span>{{ t('modelPricing.table.output') }}</span>
+                      <span v-if="officialFieldPrice(model, 'output_price', index) != null && officialFieldPrice(model, 'output_price', index) !== tier.output_price" class="pricing-official-price">
+                        {{ formatTokenPrice(officialFieldPrice(model, 'output_price', index)) }}
+                      </span>
                       <strong>{{ formatTokenPrice(tier.output_price) }}</strong>
                     </div>
                     <div>
                       <span>{{ t('modelPricing.table.cacheRead') }}</span>
+                      <span v-if="officialFieldPrice(model, 'cache_read_price', index) != null && officialFieldPrice(model, 'cache_read_price', index) !== tier.cache_read_price" class="pricing-official-price">
+                        {{ formatTokenPrice(officialFieldPrice(model, 'cache_read_price', index)) }}
+                      </span>
                       <strong>{{ formatTokenPrice(tier.cache_read_price) }}</strong>
                     </div>
                     <div>
                       <span>{{ t('modelPricing.table.cacheWrite') }}</span>
+                      <span v-if="officialFieldPrice(model, 'cache_write_price', index) != null && officialFieldPrice(model, 'cache_write_price', index) !== tier.cache_write_price" class="pricing-official-price">
+                        {{ formatTokenPrice(officialFieldPrice(model, 'cache_write_price', index)) }}
+                      </span>
                       <strong>{{ formatTokenPrice(tier.cache_write_price) }}</strong>
                     </div>
                   </div>
@@ -207,7 +223,8 @@ import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import Icon from '@/components/icons/Icon.vue'
 import ModelIcon from '@/components/common/ModelIcon.vue'
-import userChannelsAPI, { type UserSupportedModel, type UserPricingInterval } from '@/api/channels'
+import modelPlazaAPI, { type PlazaModel } from '@/api/modelPlaza'
+import type { UserPricingInterval, UserSupportedModel } from '@/api/channels'
 import { formatScaled, resolveIntervalPrices } from '@/utils/pricing'
 import { platformLabel } from '@/utils/platformColors'
 import {
@@ -218,8 +235,11 @@ import {
   type BillingMode,
 } from '@/constants/channel'
 
-interface CatalogModel extends UserSupportedModel {
+interface CatalogModel extends PlazaModel {
   catalogKey: string
+  groupId: number
+  groupName: string
+  groupRate: number
 }
 
 type BillingFilter = 'all' | BillingMode
@@ -228,7 +248,7 @@ type TokenPriceField = 'input_price' | 'output_price' | 'cache_read_price' | 'ca
 const { t } = useI18n()
 const loading = ref(true)
 const loadFailed = ref(false)
-const sourceModels = ref<UserSupportedModel[]>([])
+const sourceModels = ref<CatalogModel[]>([])
 const searchQuery = ref('')
 const selectedBilling = ref<BillingFilter>('all')
 const selectedPlatform = ref('all')
@@ -236,32 +256,33 @@ const selectedPlatform = ref('all')
 const PriceStack = defineComponent({
   name: 'PriceStack',
   props: {
+    model: { type: Object as PropType<CatalogModel>, required: true },
     rows: { type: Array as PropType<UserPricingInterval[]>, required: true },
     field: { type: String as PropType<TokenPriceField>, required: true },
   },
   setup(props) {
-    return () => h('div', { class: 'pricing-price-stack' }, props.rows.map((row) =>
-      h('div', { class: 'pricing-price-line' }, [
-        props.rows.length > 1 ? h('span', tierLabel(row)) : null,
-        h('strong', formatTokenPrice(row[props.field])),
-      ]),
-    ))
+    return () => h('div', { class: 'pricing-price-stack' }, props.rows.map((row, index) => {
+      const official = officialFieldPrice(props.model, props.field, index)
+      return h('div', { class: 'pricing-price-block' }, [
+        official != null && official !== row[props.field] ? h('span', { class: 'pricing-official-price' }, formatTokenPrice(official)) : null,
+        h('div', { class: 'pricing-price-line' }, [
+          props.rows.length > 1 ? h('span', tierLabel(row)) : null,
+          h('strong', formatTokenPrice(row[props.field])),
+        ]),
+      ])
+    }))
   },
 })
 
-const catalogModels = computed<CatalogModel[]>(() => {
-  const models = new Map<string, CatalogModel>()
-  for (const model of sourceModels.value) {
-    const key = modelKey(model)
-    const current = models.get(key)
-    if (!current || pricingScore(model) > pricingScore(current)) {
-      models.set(key, { ...model, catalogKey: key })
-    }
-  }
-  return [...models.values()].sort((a, b) =>
-    a.platform.localeCompare(b.platform) || a.name.localeCompare(b.name),
-  )
-})
+const catalogModels = computed<CatalogModel[]>(() =>
+  [...sourceModels.value].sort((a, b) =>
+    platformLabel(a.platform).localeCompare(platformLabel(b.platform))
+    || a.name.localeCompare(b.name)
+    || a.groupName.localeCompare(b.groupName),
+  ),
+)
+
+const plazaGroupCount = computed(() => new Set(catalogModels.value.map((model) => model.groupId)).size)
 
 const pricedModelCount = computed(() => catalogModels.value.filter((model) => model.pricing).length)
 
@@ -288,36 +309,66 @@ const filteredModels = computed(() => {
   return catalogModels.value.filter((model) => {
     if (selectedBilling.value !== 'all' && billingMode(model) !== selectedBilling.value) return false
     if (selectedPlatform.value !== 'all' && model.platform !== selectedPlatform.value) return false
-    return !query || model.name.toLocaleLowerCase().includes(query) || platformLabel(model.platform).toLocaleLowerCase().includes(query)
+    return !query
+      || model.name.toLocaleLowerCase().includes(query)
+      || model.groupName.toLocaleLowerCase().includes(query)
+      || platformLabel(model.platform).toLocaleLowerCase().includes(query)
   })
 })
 
 const groupedModels = computed(() => {
-  const groups = new Map<string, CatalogModel[]>()
+  const groups = new Map<string, { platform: string; label: string; rate: number | null; models: CatalogModel[] }>()
   for (const model of filteredModels.value) {
-    const list = groups.get(model.platform) ?? []
-    list.push(model)
-    groups.set(model.platform, list)
+    const current = groups.get(model.platform) ?? {
+      platform: model.platform,
+      label: platformLabel(model.platform),
+      rate: model.groupRate,
+      models: [],
+    }
+    if (current.models.length > 0 && current.rate !== model.groupRate) {
+      current.rate = null
+    }
+    current.models.push(model)
+    groups.set(model.platform, current)
   }
-  return [...groups.entries()]
-    .map(([platform, models]) => ({ platform, label: platformLabel(platform), models }))
-    .sort((a, b) => a.label.localeCompare(b.label))
+  return [...groups.values()].sort((a, b) => a.label.localeCompare(b.label))
 })
 
-function modelKey(model: Pick<UserSupportedModel, 'platform' | 'name'>): string {
-  return `${model.platform}:${model.name}`.toLocaleLowerCase()
+function modelKey(model: Pick<CatalogModel, 'catalogKey' | 'groupId' | 'platform' | 'name'>): string {
+  return model.catalogKey || `${model.groupId}:${model.platform}:${model.name}`.toLocaleLowerCase()
 }
 
-function pricingScore(model: UserSupportedModel): number {
-  const pricing = model.pricing
-  if (!pricing) return 0
-  return [
-    pricing.input_price,
-    pricing.output_price,
-    pricing.cache_read_price,
-    pricing.cache_write_price,
-    pricing.per_request_price,
-  ].filter((value) => value != null).length + (pricing.intervals?.length ?? 0)
+function formatRate(value: number): string {
+  return trimNumber(value)
+}
+
+function resolvePlazaPlatform(model: Pick<PlazaModel, 'platform' | 'name'>): string {
+  if (model.platform && model.platform !== 'composite') return model.platform
+  return inferPlatformFromModelName(model.name) || model.platform || 'composite'
+}
+
+function inferPlatformFromModelName(name: string): string | null {
+  const normalized = name.trim().toLowerCase()
+  if (!normalized) return null
+  if (normalized.startsWith('claude-') || normalized.startsWith('anthropic.claude-')) return 'anthropic'
+  if (
+    normalized.startsWith('gpt-')
+    || normalized.startsWith('chatgpt-')
+    || normalized.startsWith('codex-')
+    || normalized.startsWith('o1-')
+    || normalized.startsWith('o3-')
+    || normalized.startsWith('o4-')
+    || normalized === 'o1'
+    || normalized === 'o3'
+    || normalized === 'o4'
+  ) return 'openai'
+  if (normalized.startsWith('gemini-') || normalized.startsWith('learnlm-')) return 'gemini'
+  if (normalized === 'grok' || normalized.startsWith('grok-')) return 'grok'
+  if (normalized.startsWith('kimi-') || normalized.startsWith('moonshot-')) return 'kimi'
+  if (normalized.startsWith('glm-')) return 'zhipu'
+  if (normalized.startsWith('deepseek-')) return 'deepseek'
+  if (normalized.startsWith('minimax-')) return 'minimax'
+  return null
 }
 
 function billingMode(model: UserSupportedModel): BillingMode {
@@ -389,6 +440,17 @@ function formatTokenPrice(value: number | null): string {
   return formatScaled(value, 1_000_000, 2)
 }
 
+function officialFieldPrice(model: CatalogModel, field: TokenPriceField, index = 0): number | null {
+  const official = model.official_pricing
+  if (!official) return null
+  if (official.intervals?.length) {
+    const interval = [...official.intervals]
+      .sort((a, b) => a.min_tokens - b.min_tokens)[Math.min(index, official.intervals.length - 1)]
+    return resolveIntervalPrices(interval, official)[field] ?? null
+  }
+  return official[field] ?? null
+}
+
 function formatUnitPrice(value: number | null): string {
   return formatScaled(value, 1, 2)
 }
@@ -412,10 +474,21 @@ async function loadModels() {
   loading.value = true
   loadFailed.value = false
   try {
-    const channels = await userChannelsAPI.getAvailable()
-    sourceModels.value = channels.flatMap((channel) =>
-      channel.platforms.flatMap((section) => section.supported_models),
-    )
+    const plaza = await modelPlazaAPI.getModelPlaza()
+    sourceModels.value = (plaza.groups ?? []).flatMap((group) => {
+      const groupRate = group.user_rate_multiplier ?? group.rate_multiplier
+      return group.models.map((model) => {
+        const platform = resolvePlazaPlatform(model)
+        return {
+          ...model,
+          platform,
+          catalogKey: `${group.id}:${platform}:${model.name}`.toLocaleLowerCase(),
+          groupId: group.id,
+          groupName: group.name,
+          groupRate,
+        }
+      })
+    })
   } catch {
     loadFailed.value = true
   } finally {
@@ -466,6 +539,17 @@ onMounted(loadModels)
 .pricing-model-name span { display:block; margin-top:3px; color:#606d8c; font-size:10px; }
 .pricing-mode-badge { display:inline-flex; padding:4px 7px; border:1px solid rgba(97,122,193,.18); border-radius:5px; background:#0a1633; color:#91a0c5; font-size:10px; white-space:nowrap; }
 .pricing-price-stack { display:grid; gap:4px; }
+.pricing-price-block { display:grid; gap:2px; }
+:deep(.pricing-official-price) {
+  color: #9aa3b8;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-decoration-line: line-through;
+  text-decoration-thickness: 1px;
+  text-decoration-color: currentColor;
+}
 .pricing-price-line { display:flex; align-items:center; gap:6px; white-space:nowrap; }
 .pricing-price-line span { min-width:38px; color:#657190; font-family:ui-sans-serif,system-ui,sans-serif; font-size:9px; }
 .pricing-price-line strong,.pricing-request-price strong { color:#f0abfc; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; font-weight:700; }
@@ -533,6 +617,7 @@ onMounted(loadModels)
 }
 :global(html:not(.dark) .pricing-price-line strong),
 :global(html:not(.dark) .pricing-request-price strong) { color:#7c3aed; }
+:global(html:not(.dark) .pricing-official-price) { color:#98a2b3; }
 @media (max-width: 900px) {
   .pricing-toolbar { flex-direction:column; align-items:stretch; }
   .pricing-search { max-width:none; }
@@ -553,6 +638,12 @@ onMounted(loadModels)
   .pricing-mobile-metrics { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
   .pricing-mobile-metrics div { display:grid; gap:2px; padding:9px; border-radius:6px; background:#0b1735; }
   .pricing-mobile-metrics span { color:#657190; font-size:9px; text-transform:uppercase; }
+  .pricing-mobile-metrics .pricing-official-price {
+    color: #9aa3b8;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: none;
+  }
   .pricing-mobile-metrics strong,.pricing-mobile-request strong { color:#f0abfc; font-family:ui-monospace,SFMono-Regular,monospace; font-size:12px; }
   .pricing-mobile-request { display:flex; align-items:baseline; gap:7px; margin-top:14px; }
   .pricing-mobile-request span { color:#657190; font-size:10px; }

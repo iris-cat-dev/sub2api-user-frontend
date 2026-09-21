@@ -135,6 +135,7 @@ export default {
     groupChangedSuccess: 'Group changed successfully',
     failedToChangeGroup: 'Failed to change group',
     groupRequired: 'Please select a group',
+    fixedCreateGroupMissing: 'The 模型合集 group was not found. Contact an administrator.',
     usage: 'Usage',
     today: 'Today',
     total: 'Last 30d',
@@ -704,8 +705,8 @@ export default {
 
   modelPricing: {
     title: 'Model Pricing',
-    description: 'Browse every model available to your account with prices normalized to the base ×1 rate.',
-    searchPlaceholder: 'Search models or platforms',
+    description: 'Browse group-configured prices from the model plaza.',
+    searchPlaceholder: 'Search models, groups, or platforms',
     loading: 'Loading model prices...',
     loadFailed: 'Failed to load model prices',
     retry: 'Try again',
@@ -715,6 +716,7 @@ export default {
     baseTier: 'Base',
     stats: {
       models: 'Models',
+      groups: 'Groups',
       platforms: 'Platforms',
       priced: 'Priced'
     },

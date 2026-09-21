@@ -16,6 +16,7 @@ const {
   copyToClipboard,
   isCurrentStep,
   nextStep,
+  createKey,
 } = vi.hoisted(() => ({
   listKeys: vi.fn(),
   getPublicSettings: vi.fn(),
@@ -27,6 +28,7 @@ const {
   copyToClipboard: vi.fn(),
   isCurrentStep: vi.fn(),
   nextStep: vi.fn(),
+  createKey: vi.fn(),
 }))
 
 const messages: Record<string, string> = {
@@ -39,6 +41,12 @@ const messages: Record<string, string> = {
   'keys.allStatus': 'All Status',
   'keys.columnSettings': 'Column Settings',
   'keys.createKey': 'Create API Key',
+  'keys.fixedCreateGroupMissing': 'The 模型合集 group was not found. Contact an administrator.',
+  'keys.groupLabel': 'Group',
+  'keys.nameLabel': 'Name',
+  'keys.groupRequired': 'Please select a group',
+  'common.create': 'Create',
+  'common.cancel': 'Cancel',
   'keys.created': 'Created',
   'keys.expiresAt': 'Expires',
   'keys.group': 'Group',
@@ -58,7 +66,7 @@ const messages: Record<string, string> = {
 vi.mock('@/api', () => ({
   keysAPI: {
     list: listKeys,
-    create: vi.fn(),
+    create: createKey,
     update: vi.fn(),
     delete: vi.fn(),
     toggleStatus: vi.fn(),
@@ -283,6 +291,8 @@ describe('user KeysView column settings', () => {
     getAvailableGroups.mockResolvedValue([])
     getUserGroupRates.mockResolvedValue({})
     isCurrentStep.mockReturnValue(false)
+    createKey.mockReset()
+    createKey.mockResolvedValue({ id: 99, key: 'sk-created', name: 'created' })
   })
 
   it('uses the default API key columns with low-frequency columns hidden', async () => {
@@ -436,6 +446,142 @@ describe('user KeysView column settings', () => {
         sort_order: 'asc',
       },
       expect.objectContaining({ signal: expect.any(AbortSignal) })
+    )
+  })
+})
+
+const createGroup = (overrides: Record<string, unknown> = {}) => ({
+  id: 20,
+  name: '模型合集',
+  description: null,
+  platform: 'composite',
+  rate_multiplier: 1,
+  peak_rate_enabled: false,
+  peak_start: '',
+  peak_end: '',
+  peak_rate_multiplier: 1,
+  subscription_type: 'standard',
+  ...overrides,
+})
+
+const BaseDialogSlotStub = {
+  name: 'BaseDialog',
+  props: ['show'],
+  template: '<div v-if="show" data-test="key-dialog"><slot /><slot name="footer" /></div>',
+}
+
+const GroupBadgeNameStub = {
+  name: 'GroupBadge',
+  props: ['name'],
+  template: '<span data-test="locked-group">{{ name }}</span>',
+}
+
+const mountCreateView = async () => {
+  const wrapper = mount(KeysView, {
+    global: {
+      stubs: {
+        AppLayout: AppLayoutStub,
+        TablePageLayout: TablePageLayoutStub,
+        DataTable: DataTableStub,
+        Pagination: PaginationStub,
+        BaseDialog: BaseDialogSlotStub,
+        ConfirmDialog: true,
+        EmptyState: true,
+        Select: SelectStub,
+        SearchInput: SearchInputStub,
+        Icon: IconStub,
+        UseKeyModal: true,
+        EndpointPopover: true,
+        GroupBadge: GroupBadgeNameStub,
+        GroupOptionItem: true,
+        Teleport: true,
+      },
+    },
+  })
+  await flushPromises()
+  await nextTick()
+  return wrapper
+}
+
+describe('user KeysView create group lock', () => {
+  beforeEach(() => {
+    localStorage.clear()
+
+    listKeys.mockReset()
+    getPublicSettings.mockReset()
+    getDashboardApiKeysUsage.mockReset()
+    getAvailableGroups.mockReset()
+    getUserGroupRates.mockReset()
+    showError.mockReset()
+    showSuccess.mockReset()
+    copyToClipboard.mockReset()
+    isCurrentStep.mockReset()
+    nextStep.mockReset()
+    createKey.mockReset()
+
+    listKeys.mockResolvedValue({
+      items: [createApiKey()],
+      total: 1,
+      page: 1,
+      page_size: 20,
+      pages: 1,
+    })
+    getPublicSettings.mockResolvedValue({})
+    getDashboardApiKeysUsage.mockResolvedValue({ stats: {} })
+    getAvailableGroups.mockResolvedValue([
+      createGroup({ id: 7, name: 'Claude' }),
+      createGroup(),
+    ])
+    getUserGroupRates.mockResolvedValue({})
+    isCurrentStep.mockReturnValue(false)
+    createKey.mockResolvedValue({ id: 99, key: 'sk-created', name: 'created' })
+  })
+
+  it('shows the 模型合集 group as locked and hides the group Select', async () => {
+    const wrapper = await mountCreateView()
+
+    await wrapper.get('[data-tour="keys-create-btn"]').trigger('click')
+    await nextTick()
+
+    expect(wrapper.get('[data-test="locked-group"]').text()).toBe('模型合集')
+    expect(wrapper.get('[data-test="key-dialog"]').findAllComponents({ name: 'Select' })).toHaveLength(0)
+  })
+
+  it('creates a key with the 模型合集 group even when other groups exist', async () => {
+    const wrapper = await mountCreateView()
+
+    await wrapper.get('[data-tour="keys-create-btn"]').trigger('click')
+    await nextTick()
+    await wrapper.get('[data-tour="key-form-name"]').setValue('locked-key')
+    await wrapper.get('#key-form').trigger('submit')
+    await flushPromises()
+
+    expect(createKey).toHaveBeenCalledWith(
+      'locked-key',
+      20,
+      undefined,
+      [],
+      [],
+      0,
+      undefined,
+      { rate_limit_5h: 0, rate_limit_1d: 0, rate_limit_7d: 0 },
+    )
+    expect(showError).not.toHaveBeenCalled()
+  })
+
+  it('blocks create when the 模型合集 group is unavailable', async () => {
+    getAvailableGroups.mockResolvedValue([createGroup({ id: 7, name: 'Claude' })])
+    const wrapper = await mountCreateView()
+
+    await wrapper.get('[data-tour="keys-create-btn"]').trigger('click')
+    await nextTick()
+    await wrapper.get('[data-tour="key-form-name"]').setValue('locked-key')
+    await wrapper.get('#key-form').trigger('submit')
+    await flushPromises()
+
+    expect(createKey).not.toHaveBeenCalled()
+    expect(showError).toHaveBeenCalledWith(
+      'The 模型合集 group was not found. Contact an administrator.',
     )
   })
 })
