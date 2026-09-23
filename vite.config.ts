@@ -22,14 +22,13 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: 'dist',
       emptyOutDir: true,
+      cssCodeSplit: false,
       rollupOptions: {
         output: {
+          experimentalMinChunkSize: 20_000,
           manualChunks(id: string) {
             if (!id.includes('node_modules')) return undefined
-            if (id.includes('/vue/') || id.includes('/vue-router/') || id.includes('/pinia/') || id.includes('/@vue/')) return 'vendor-vue'
-            if (id.includes('/@vueuse/')) return 'vendor-ui'
             if (id.includes('/chart.js/') || id.includes('/vue-chartjs/')) return 'vendor-chart'
-            if (id.includes('/vue-i18n/') || id.includes('/@intlify/')) return 'vendor-i18n'
             if (id.includes('/@stripe/stripe-js/')) return 'vendor-stripe'
             return 'vendor-misc'
           },

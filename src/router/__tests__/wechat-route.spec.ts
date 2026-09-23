@@ -30,13 +30,6 @@ vi.mock('@/composables/useNavigationLoading', () => ({
   }),
 }))
 
-vi.mock('@/composables/useRoutePrefetch', () => ({
-  useRoutePrefetch: () => ({
-    triggerPrefetch: vi.fn(),
-    cancelPendingPrefetch: vi.fn(),
-    resetPrefetchState: vi.fn(),
-  }),
-}))
 
 describe('router WeChat OAuth route', () => {
   it('registers the WeChat callback route as a public route', async () => {

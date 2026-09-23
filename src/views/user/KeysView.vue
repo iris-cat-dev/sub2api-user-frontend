@@ -24,7 +24,7 @@
             />
           </div>
           <EndpointPopover
-            api-base-url="https://codex.mintcat.work"
+            :api-base-url="serviceBaseUrl"
             :custom-endpoints="publicSettings?.custom_endpoints || []"
           />
         </div>
@@ -1013,7 +1013,7 @@
     <UseKeyModal
       :show="showUseKeyModal"
       :api-key="selectedKey?.key || ''"
-      :base-url="publicSettings?.api_base_url || ''"
+      :base-url="serviceBaseUrl"
       :platform="selectedKey?.group?.platform || null"
       :allow-messages-dispatch="selectedKey?.group?.allow_messages_dispatch || false"
       @close="closeUseKeyModal"
@@ -1170,6 +1170,8 @@ import {
   buildCcSwitchImportDeeplink,
   type CcSwitchClientType
 } from '@/utils/ccswitchImport'
+
+const serviceBaseUrl = 'https://codex.mintcat.work'
 
 // Helper to format date for datetime-local input
 const formatDateTimeLocal = (isoDate: string): string => {
@@ -1924,7 +1926,7 @@ const importToCcswitch = (row: ApiKey) => {
 }
 
 const executeCcsImport = (row: ApiKey, clientType: CcSwitchClientType) => {
-  const baseUrl = publicSettings.value?.api_base_url || window.location.origin
+  const baseUrl = serviceBaseUrl
   const platform = row.group?.platform || 'anthropic'
 
   const usageScript = `({

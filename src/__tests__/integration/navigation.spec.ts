@@ -1,6 +1,6 @@
 /**
  * 导航集成测试
- * 测试完整的页面导航流程、预加载和错误恢复机制
+ * 测试完整的页面导航流程和错误恢复机制
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createRouter, createWebHistory, type Router } from 'vue-router'
@@ -8,7 +8,6 @@ import { createPinia, setActivePinia } from 'pinia'
 import { mount, flushPromises } from '@vue/test-utils'
 import { defineComponent, h, nextTick } from 'vue'
 import { useNavigationLoadingState, _resetNavigationLoadingInstance } from '@/composables/useNavigationLoading'
-import { useRoutePrefetch } from '@/composables/useRoutePrefetch'
 
 // Mock 视图组件
 const MockDashboard = defineComponent({
@@ -191,84 +190,6 @@ describe('Navigation Integration Tests', () => {
     })
   })
 
-  describe('路由预加载', () => {
-    it('导航后应该触发相关路由预加载', async () => {
-      const routePrefetch = useRoutePrefetch()
-      const triggerSpy = vi.spyOn(routePrefetch, 'triggerPrefetch')
-
-      // 设置 afterEach 守卫
-      router.afterEach((to) => {
-        routePrefetch.triggerPrefetch(to)
-      })
-
-      const wrapper = mount(TestApp, {
-        global: {
-          plugins: [router]
-        }
-      })
-
-      await router.isReady()
-      await router.push('/dashboard')
-      await flushPromises()
-
-      // 应该触发预加载
-      expect(triggerSpy).toHaveBeenCalled()
-
-      wrapper.unmount()
-    })
-
-    it('已预加载的路由不应重复预加载', async () => {
-      const routePrefetch = useRoutePrefetch()
-
-      const wrapper = mount(TestApp, {
-        global: {
-          plugins: [router]
-        }
-      })
-
-      await router.isReady()
-      await router.push('/dashboard')
-      await flushPromises()
-
-      // 手动触发预加载
-      routePrefetch.triggerPrefetch(router.currentRoute.value)
-      await new Promise((resolve) => setTimeout(resolve, 100))
-
-      const prefetchedCount = routePrefetch.prefetchedRoutes.value.size
-
-      // 再次触发相同路由预加载
-      routePrefetch.triggerPrefetch(router.currentRoute.value)
-      await new Promise((resolve) => setTimeout(resolve, 100))
-
-      // 预加载数量不应增加
-      expect(routePrefetch.prefetchedRoutes.value.size).toBe(prefetchedCount)
-
-      wrapper.unmount()
-    })
-
-    it('路由变化时应取消之前的预加载任务', async () => {
-      const routePrefetch = useRoutePrefetch()
-
-      const wrapper = mount(TestApp, {
-        global: {
-          plugins: [router]
-        }
-      })
-
-      await router.isReady()
-
-      // 触发预加载
-      routePrefetch.triggerPrefetch(router.currentRoute.value)
-
-      // 立即导航到新路由（这会在内部调用 cancelPendingPrefetch）
-      routePrefetch.triggerPrefetch({ path: '/keys' } as any)
-
-      // 由于 triggerPrefetch 内部调用 cancelPendingPrefetch，检查是否有预加载被正确管理
-      expect(routePrefetch.prefetchedRoutes.value.size).toBeLessThanOrEqual(2)
-
-      wrapper.unmount()
-    })
-  })
 
   describe('Chunk 加载错误恢复', () => {
     it('chunk 加载失败应该被正确捕获', async () => {

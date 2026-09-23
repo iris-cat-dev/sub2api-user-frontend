@@ -3,7 +3,6 @@ import type { RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useAppStore } from '@/stores/app'
 import { useNavigationLoadingState } from '@/composables/useNavigationLoading'
-import { useRoutePrefetch } from '@/composables/useRoutePrefetch'
 import { resolveRouteDocumentTitle } from './title'
 
 const routes: RouteRecordRaw[] = [
@@ -238,7 +237,6 @@ const router = createRouter({
 
 let authInitialized = false
 const navigationLoading = useNavigationLoadingState()
-const routePrefetch = useRoutePrefetch(router)
 
 const backendModePublicPaths = [
   '/login',
@@ -330,9 +328,8 @@ router.beforeEach(async (to) => {
   return true
 })
 
-router.afterEach((to) => {
+router.afterEach(() => {
   navigationLoading.endNavigation()
-  routePrefetch.triggerPrefetch(to)
 })
 
 router.onError((error) => {

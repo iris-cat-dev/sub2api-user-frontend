@@ -87,7 +87,7 @@ onUnmounted(() => {
 }
 
 .table-scroll-container :deep(td) {
-  @apply border-b border-dark-800 px-5 py-3.5 text-sm text-gray-300;
+  @apply border-b border-gray-100 px-5 py-3.5 text-sm text-gray-300 dark:border-dark-800;
 }
 
 /* 移动端：恢复正常滚动 */

@@ -46,13 +46,6 @@ vi.mock('@/composables/useNavigationLoading', () => ({
     isLoading: { value: false },
   }),
 }))
-vi.mock('@/composables/useRoutePrefetch', () => ({
-  useRoutePrefetch: () => ({
-    triggerPrefetch: vi.fn(),
-    cancelPendingPrefetch: vi.fn(),
-    resetPrefetchState: vi.fn(),
-  }),
-}))
 
 function runGuard(path: string, meta: Record<string, unknown> = {}, fullPath = path) {
   if (!routerHarness.guard) throw new Error('router guard was not registered')
