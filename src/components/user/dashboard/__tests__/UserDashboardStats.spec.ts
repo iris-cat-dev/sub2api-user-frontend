@@ -71,7 +71,7 @@ function quota(over: Partial<PlatformQuotaItem> & { platform: string }): Platfor
 
 function mountStats(stats: UserStatsType, platformQuotas: PlatformQuotaItem[] | null = null, isSimple = false) {
   return mount(UserDashboardStats, {
-    props: { stats, balance: 0, isSimple, platformQuotas },
+    props: { stats, balance: 0, discountMultiplier: 1, isSimple, platformQuotas },
     global: { stubs: { Icon: true } },
   })
 }
@@ -81,6 +81,26 @@ function cardPlatforms(w: VueWrapper): string[] {
   return w.findAll('[data-testid="platform-card"]').map((c) => c.attributes('data-platform') ?? '')
 }
 
+
+describe('UserDashboardStats 全渠道折扣', () => {
+  it('显示当前用户的最终全渠道折扣倍率', () => {
+    const wrapper = mount(UserDashboardStats, {
+      props: {
+        stats: makeStats(),
+        balance: 0,
+        discountMultiplier: 0.8,
+        isSimple: false,
+        platformQuotas: [],
+      },
+      global: { stubs: { Icon: true } },
+    })
+
+    const card = wrapper.get('[data-testid="discount-card"]')
+    expect(card.text()).toContain('dashboard.discount')
+    expect(card.text()).toContain('0.80x')
+    expect(card.text()).toContain('dashboard.discountAppliesAllChannels')
+  })
+})
 describe('UserDashboardStats 按平台拆分', () => {
   it('只有用量的平台才产生卡片；三档全空的限额记录不产生卡片', () => {
     const w = mountStats(

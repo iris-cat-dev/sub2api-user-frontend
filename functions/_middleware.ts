@@ -22,6 +22,8 @@ function isProxiedPath(pathname: string): boolean {
 
 function isAssetPath(pathname: string): boolean {
   return pathname === '/assets' || pathname.startsWith('/assets/')
+    || pathname === '/drawing-app/assets' || pathname.startsWith('/drawing-app/assets/')
+    || pathname === '/drawing/assets' || pathname.startsWith('/drawing/assets/')
 }
 
 function isBlockedPath(pathname: string): boolean {

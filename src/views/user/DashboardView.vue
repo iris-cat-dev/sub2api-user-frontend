@@ -20,6 +20,7 @@
         <UserDashboardStats
           :stats="stats"
           :balance="user?.balance || 0"
+          :discount-multiplier="user?.discount_multiplier ?? 1"
           :is-simple="authStore.isSimpleMode"
           :platform-quotas="platformQuotas"
         />

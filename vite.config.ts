@@ -41,6 +41,7 @@ export default defineConfig(({ mode }) => {
       proxy: {
         '/api': { target: backendUrl, changeOrigin: true },
         '/v1': { target: backendUrl, changeOrigin: true },
+        '/drawing-app': { target: 'http://localhost:3001', changeOrigin: true, ws: true },
       },
     },
   }

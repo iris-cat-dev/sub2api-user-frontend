@@ -117,6 +117,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'API Keys', titleKey: 'keys.title', descriptionKey: 'keys.description' },
   },
   {
+    path: '/drawing',
+    name: 'DrawingEntry',
+    component: () => import('@/views/user/DrawingEntryView.vue'),
+    meta: { title: '画图工作台' },
+  },
+  {
     path: '/batch-image',
     alias: '/docs/batch-image',
     name: 'BatchImageGuide',

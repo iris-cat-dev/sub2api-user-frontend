@@ -184,6 +184,7 @@ const navItems = computed<NavItem[]>(() => {
   const items: NavItem[] = [
     { path: '/dashboard', label: t('nav.dashboard'), icon: 'grid', group: 'workspace' },
     { path: '/keys', label: t('nav.apiKeys'), icon: 'key', group: 'workspace' },
+    { path: '/drawing', label: t('nav.drawing'), icon: 'sparkles', group: 'workspace' },
     { path: '/batch-image', label: t('nav.batchImage'), icon: 'sparkles', group: 'workspace', hideInSimpleMode: true, enabled: canUseBatchImage.value },
     { path: '/usage', label: t('nav.usage'), icon: 'chart', group: 'workspace', hideInSimpleMode: true },
     { path: '/pricing', label: t('nav.modelPricing'), icon: 'calculator', group: 'workspace', hideInSimpleMode: true },

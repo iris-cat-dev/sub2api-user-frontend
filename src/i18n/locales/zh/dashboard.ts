@@ -5,6 +5,8 @@ export default {
     welcomeMessage: '欢迎回来！这是您账户的概览。',
     getStarted: '快捷入口',
     balance: '余额',
+    discount: '全渠道折扣',
+    discountAppliesAllChannels: '适用于全部渠道',
     apiKeys: 'API 密钥',
     todayRequests: '今日请求',
     todayCost: '今日消费',

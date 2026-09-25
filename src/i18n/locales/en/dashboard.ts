@@ -5,6 +5,8 @@ export default {
     welcomeMessage: "Welcome back! Here's an overview of your account.",
     getStarted: 'Shortcuts',
     balance: 'Balance',
+    discount: 'All-channel discount',
+    discountAppliesAllChannels: 'Applies to every channel',
     apiKeys: 'API Keys',
     todayRequests: 'Today Requests',
     todayCost: 'Today Cost',

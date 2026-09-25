@@ -7,8 +7,9 @@
   "scripts": {
     "start": "bash ./start.sh",
     "dev": "vite --config vite.config.ts",
+    "dev:drawing": "vite --config vite.drawing.config.ts",
     "check:i18n": "vitest run src/i18n/__tests__/localeKeyCompleteness.spec.ts",
-    "build": "pnpm run check:i18n && vue-tsc -b && vite build --config vite.config.ts",
+    "build": "pnpm run check:i18n && vue-tsc -b && vite build --config vite.config.ts && vite build --config vite.drawing.config.ts",
     "preview": "vite preview --config vite.config.ts",
     "pages:dev": "pnpm run build && wrangler pages dev dist --port 3000 --ip 127.0.0.1",
     "deploy:pages": "pnpm run build && wrangler pages deploy dist",

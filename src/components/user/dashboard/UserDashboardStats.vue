@@ -1,6 +1,9 @@
 <template>
   <section class="space-y-5">
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div
+      class="grid grid-cols-1 gap-4 sm:grid-cols-2"
+      :class="isSimple ? 'xl:grid-cols-4' : 'xl:grid-cols-5'"
+    >
       <article v-if="!isSimple" class="dash-card dash-stat-card">
         <div class="dash-stat-icon text-fuchsia-300">
           <Icon name="dollar" size="md" :stroke-width="1.8" />
@@ -9,6 +12,19 @@
           <p class="dash-stat-label">{{ t('dashboard.balance') }}</p>
           <p class="dash-stat-value">¥{{ formatBalance(balance) }}</p>
           <p class="dash-stat-meta text-emerald-400">{{ t('common.available') }}</p>
+        </div>
+      </article>
+
+      <article class="dash-card dash-stat-card" data-testid="discount-card">
+        <div class="dash-stat-icon text-emerald-300">
+          <Icon name="calculator" size="md" :stroke-width="1.8" />
+        </div>
+        <div class="min-w-0">
+          <p class="dash-stat-label">{{ t('dashboard.discount') }}</p>
+          <p class="dash-stat-value">{{ effectiveDiscountMultiplier.toFixed(2) }}x</p>
+          <p class="dash-stat-meta text-emerald-400">
+            {{ t('dashboard.discountAppliesAllChannels') }}
+          </p>
         </div>
       </article>
 
@@ -218,9 +234,15 @@ const props = defineProps<{
   stats: UserStatsType
   balance: number
   isSimple: boolean
+  discountMultiplier?: number
   platformQuotas?: PlatformQuotaItem[] | null
 }>()
 const { t } = useI18n()
+
+const effectiveDiscountMultiplier = computed(() => {
+  const value = props.discountMultiplier ?? 1
+  return value > 0 && value <= 1 ? value : 1
+})
 
 const PLATFORM_LABELS: Record<string, string> = {
   anthropic: 'Claude',
