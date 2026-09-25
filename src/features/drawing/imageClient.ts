@@ -160,7 +160,7 @@ export async function requestDrawing(request: DrawingRequest): Promise<string[]>
   } else if (edit) {
     const form = new FormData()
     for (const [key, value] of Object.entries(fields)) form.append(key, String(value))
-    for (const file of request.imageFiles) form.append(request.imageFiles.length === 1 ? 'image' : 'image[]', file, file.name)
+    for (const file of request.imageFiles) form.append('image', file, file.name)
     body = form
   } else {
     headers['Content-Type'] = 'application/json'
