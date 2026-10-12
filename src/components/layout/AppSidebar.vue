@@ -133,7 +133,7 @@ import { resolveSiteBillingMode } from '@/utils/siteBillingMode'
 import { sanitizeSvg } from '@/utils/sanitize'
 import { sanitizeUrl } from '@/utils/url'
 
-type IconName = 'grid' | 'key' | 'sparkles' | 'chart' | 'calculator' | 'server' | 'creditCard' | 'dollar' | 'document' | 'gift' | 'users' | 'user'
+type IconName = 'grid' | 'key' | 'chat' | 'sparkles' | 'chart' | 'calculator' | 'server' | 'creditCard' | 'dollar' | 'document' | 'gift' | 'users' | 'user'
 type NavGroup = 'workspace' | 'billing' | 'service' | 'account'
 
 interface NavItem {
@@ -184,7 +184,8 @@ const navItems = computed<NavItem[]>(() => {
   const items: NavItem[] = [
     { path: '/dashboard', label: t('nav.dashboard'), icon: 'grid', group: 'workspace' },
     { path: '/keys', label: t('nav.apiKeys'), icon: 'key', group: 'workspace' },
-    { path: '/drawing', label: t('nav.drawing'), icon: 'sparkles', group: 'workspace' },
+    { path: '/chat', label: t('nav.chat'), icon: 'chat', group: 'service' },
+    { path: '/drawing', label: t('nav.drawing'), icon: 'sparkles', group: 'service' },
     { path: '/batch-image', label: t('nav.batchImage'), icon: 'sparkles', group: 'workspace', hideInSimpleMode: true, enabled: canUseBatchImage.value },
     { path: '/usage', label: t('nav.usage'), icon: 'chart', group: 'workspace', hideInSimpleMode: true },
     { path: '/pricing', label: t('nav.modelPricing'), icon: 'calculator', group: 'workspace', hideInSimpleMode: true },

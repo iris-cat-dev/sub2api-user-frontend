@@ -79,7 +79,9 @@
             </div>
             <div v-if="attachments.length" class="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4">
               <div v-for="attachment in attachments" :key="attachment.url" class="relative aspect-square overflow-hidden rounded-lg bg-gray-100 dark:bg-dark-700">
-                <img :src="attachment.url" :alt="attachment.file.name" class="h-full w-full object-cover" />
+                <button type="button" class="h-full w-full focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500" :aria-label="t('drawing.openPreview', { name: attachment.file.name })" @click="imagePreview = { src: attachment.url, alt: attachment.file.name }">
+                  <img :src="attachment.url" :alt="attachment.file.name" class="h-full w-full object-cover" />
+                </button>
                 <button type="button" class="absolute right-1 top-1 rounded-full bg-black/70 px-2 py-0.5 text-xs text-white hover:bg-black" :aria-label="t('drawing.removeImage', { name: attachment.file.name })" :disabled="generating" @click="removeAttachment(attachment)">×</button>
               </div>
             </div>
@@ -118,7 +120,10 @@
           <article v-for="task in tasks" :key="task.id" class="card min-w-0 overflow-hidden">
             <div v-if="task.outputImages.length" class="grid grid-cols-2 gap-1 bg-gray-100 dark:bg-dark-900" :class="task.outputImages.length === 1 ? 'grid-cols-1' : ''">
               <div v-for="(image, index) in task.outputImages" :key="index" class="group relative aspect-square overflow-hidden">
-                <img :src="image" :alt="t('drawing.resultAlt', { index: index + 1, prompt: task.prompt })" class="h-full w-full object-cover" loading="lazy" />
+                <button type="button" class="h-full w-full focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500" :aria-label="t('drawing.openPreview', { name: t('drawing.resultAlt', { index: index + 1, prompt: task.prompt }) })" @click="imagePreview = { src: image, alt: t('drawing.resultAlt', { index: index + 1, prompt: task.prompt }) }">
+                  <img :src="image" :alt="t('drawing.resultAlt', { index: index + 1, prompt: task.prompt })" class="h-full w-full object-cover" loading="lazy" />
+                  <span class="absolute right-2 top-2 rounded bg-black/70 px-2 py-1 text-xs font-medium text-white">{{ t('drawing.fullscreenPreview') }}</span>
+                </button>
                 <div class="absolute inset-x-0 bottom-0 flex flex-wrap gap-1 bg-gradient-to-t from-black/70 p-2 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
                   <button type="button" class="rounded bg-white/90 px-2 py-1 text-xs font-medium text-gray-900 hover:bg-white disabled:opacity-50" :disabled="generating" @click="useAsReference(image)">{{ t('drawing.useReference') }}</button>
                   <button type="button" class="rounded bg-white/90 px-2 py-1 text-xs font-medium text-gray-900 hover:bg-white" @click="download(image, task.id, index)">{{ t('drawing.download') }}</button>
@@ -134,7 +139,9 @@
               <p class="line-clamp-3 whitespace-pre-wrap break-words text-sm font-medium" :title="task.prompt">{{ task.prompt }}</p>
               <p class="text-xs text-gray-500 dark:text-gray-400">{{ task.model }} · {{ formatDate(task.createdAt) }}</p>
               <div v-if="task.inputImages.length" class="flex gap-1 overflow-x-auto" :aria-label="t('drawing.references')">
-                <img v-for="(image, index) in task.inputImages" :key="index" :src="image" :alt="t('drawing.referenceAlt', { index: index + 1 })" class="h-10 w-10 shrink-0 rounded object-cover" loading="lazy" />
+                <button v-for="(image, index) in task.inputImages" :key="index" type="button" class="h-10 w-10 shrink-0 overflow-hidden rounded focus-visible:ring-2 focus-visible:ring-primary-500" :aria-label="t('drawing.openPreview', { name: t('drawing.referenceAlt', { index: index + 1 }) })" @click="imagePreview = { src: image, alt: t('drawing.referenceAlt', { index: index + 1 }) }">
+                  <img :src="image" :alt="t('drawing.referenceAlt', { index: index + 1 })" class="h-full w-full object-cover" loading="lazy" />
+                </button>
               </div>
               <div class="flex justify-end">
                 <button v-if="task.id !== previewTaskId" type="button" class="text-xs text-red-600 hover:underline dark:text-red-400" @click="deleteTask(task)">{{ t('drawing.delete') }}</button>
@@ -145,11 +152,15 @@
       </section>
     </div>
   </main>
+  <BaseDialog :show="imagePreview !== null" :title="t('drawing.fullscreenPreview')" width="full" close-on-click-outside @close="imagePreview = null">
+    <img v-if="imagePreview" :src="imagePreview.src" :alt="imagePreview.alt" class="mx-auto h-[70dvh] max-w-full object-contain" />
+  </BaseDialog>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import BaseDialog from '@/components/common/BaseDialog.vue'
 import { keysAPI } from '@/api/keys'
 import type { ApiKey } from '@/types'
 import { requestDrawing, listDrawingModels } from './imageClient'
@@ -206,6 +217,7 @@ const tasks = ref<DrawingTask[]>([])
 const legacyCount = ref(0)
 const preview = ref('')
 const previewTaskId = ref<string | null>(null)
+const imagePreview = ref<{ src: string; alt: string } | null>(null)
 let controller: AbortController | null = null
 let revision = 0
 let modelsRevision = 0
@@ -289,6 +301,7 @@ watch(() => props.userId, userId => {
   generating.value = false
   preview.value = ''
   previewTaskId.value = null
+  imagePreview.value = null
   localTaskIds.clear()
   clearAttachments()
   prompt.value = ''
@@ -340,9 +353,11 @@ function onPaste(event: ClipboardEvent) {
 }
 function removeAttachment(attachment: Attachment) {
   attachments.value = attachments.value.filter(item => item !== attachment)
+  if (imagePreview.value?.src === attachment.url) imagePreview.value = null
   URL.revokeObjectURL(attachment.url)
 }
 function clearAttachments() {
+  if (attachments.value.some(attachment => attachment.url === imagePreview.value?.src)) imagePreview.value = null
   for (const attachment of attachments.value) URL.revokeObjectURL(attachment.url)
   attachments.value = []
 }

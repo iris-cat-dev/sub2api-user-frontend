@@ -4,6 +4,7 @@ import dashboard from './dashboard'
 import channelMonitorV2 from './channelMonitorV2'
 import batchImage from './batchImage'
 import drawing from './drawing'
+import chat from './chat'
 import misc from './misc'
 
 export default {
@@ -13,5 +14,6 @@ export default {
   ...channelMonitorV2,
   ...batchImage,
   ...drawing,
+  ...chat,
   ...misc,
 }

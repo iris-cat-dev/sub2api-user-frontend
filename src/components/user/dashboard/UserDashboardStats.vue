@@ -2,7 +2,7 @@
   <section class="space-y-5">
     <div
       class="grid grid-cols-1 gap-4 sm:grid-cols-2"
-      :class="isSimple ? 'xl:grid-cols-4' : 'xl:grid-cols-5'"
+      :class="isSimple ? 'xl:grid-cols-3' : 'xl:grid-cols-4'"
     >
       <article v-if="!isSimple" class="dash-card dash-stat-card">
         <div class="dash-stat-icon text-fuchsia-300">
@@ -24,20 +24,6 @@
           <p class="dash-stat-value">{{ effectiveDiscountMultiplier.toFixed(2) }}x</p>
           <p class="dash-stat-meta text-emerald-400">
             {{ t('dashboard.discountAppliesAllChannels') }}
-          </p>
-        </div>
-      </article>
-
-      <article class="dash-card dash-stat-card">
-        <div class="dash-stat-icon text-cyan-300">
-          <Icon name="key" size="md" :stroke-width="1.8" />
-        </div>
-        <div class="min-w-0">
-          <p class="dash-stat-label">{{ t('dashboard.apiKeys') }}</p>
-          <p class="dash-stat-value">{{ stats?.total_api_keys || 0 }}</p>
-          <p class="dash-stat-meta">
-            <span class="dash-status-dot"></span>
-            {{ stats?.active_api_keys || 0 }} {{ t('common.active') }}
           </p>
         </div>
       </article>

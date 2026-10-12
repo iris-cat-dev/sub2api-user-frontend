@@ -259,6 +259,10 @@ export default {
     ipBlacklistHint: 'One IP or CIDR per line. These IPs will be blocked from using this key.',
     ipRestrictionEnabled: 'IP restriction enabled',
     ccSwitchNotInstalled: 'CC-Switch is not installed or the protocol handler is not registered. Please install CC-Switch first or manually copy the API key.',
+    ccsPlatformSelect: {
+      title: 'Select Import Platform',
+      description: 'Select the platform to import to CC-Switch. Antigravity requires a further choice of Claude / Gemini.'
+    },
     ccsClientSelect: {
       title: 'Select Client',
       description: 'Please select the client type to import to CC-Switch:',

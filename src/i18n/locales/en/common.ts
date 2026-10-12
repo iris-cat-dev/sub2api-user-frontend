@@ -178,6 +178,7 @@ export default {
     apiKeys: 'API Keys',
     batchImage: 'Batch Images',
     drawing: 'Image Studio',
+    chat: 'AI Chat',
     usage: 'Usage',
     redeem: 'Redeem',
     affiliate: 'Affiliate Rebates',

@@ -82,6 +82,19 @@ function cardPlatforms(w: VueWrapper): string[] {
 }
 
 
+describe('UserDashboardStats 概览卡片', () => {
+  it.each([false, true])('简易模式 %s 不显示 API 密钥统计，保留其他概览', (isSimple) => {
+    const wrapper = mountStats(makeStats({ total_api_keys: 7, active_api_keys: 3 }), null, isSimple)
+    const overview = wrapper.get('section > div')
+
+    expect(overview.text()).not.toContain('dashboard.apiKeys')
+    expect(overview.text()).toContain('dashboard.discount')
+    expect(overview.text()).toContain('dashboard.todayRequests')
+    expect(overview.text()).toContain('dashboard.todayCost')
+    expect(overview.findAll('article')).toHaveLength(isSimple ? 3 : 4)
+  })
+})
+
 describe('UserDashboardStats 全渠道折扣', () => {
   it('显示当前用户的最终全渠道折扣倍率', () => {
     const wrapper = mount(UserDashboardStats, {

@@ -45,6 +45,8 @@ export default {
     useReference: 'Use as reference',
     download: 'Download',
     preview: 'Streaming preview',
+    fullscreenPreview: 'Full-screen preview',
+    openPreview: 'Preview {name}',
     generating: 'Generating image…',
     interrupted: 'Generation was interrupted before this session.',
     resultAlt: 'Result {index} for {prompt}',

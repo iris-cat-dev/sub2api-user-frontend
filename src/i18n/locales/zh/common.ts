@@ -178,6 +178,7 @@ export default {
     apiKeys: 'API 密钥',
     batchImage: '批量生图',
     drawing: '画图工作台',
+    chat: 'AI 对话',
     usage: '使用记录',
     redeem: '兑换',
     affiliate: '邀请返利',

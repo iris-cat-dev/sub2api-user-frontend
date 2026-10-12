@@ -123,6 +123,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '画图工作台' },
   },
   {
+    path: '/chat',
+    name: 'Chat',
+    component: () => import('@/views/user/ChatView.vue'),
+    meta: { requiresAuth: true, title: 'Chat', titleKey: 'chat.title', descriptionKey: 'chat.subtitle' },
+  },
+  {
     path: '/batch-image',
     alias: '/docs/batch-image',
     name: 'BatchImageGuide',

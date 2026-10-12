@@ -1019,6 +1019,38 @@
       @close="closeUseKeyModal"
     />
 
+    <!-- CCS Platform Selection Dialog -->
+    <BaseDialog
+      :show="showCcsPlatformSelect"
+      :title="t('keys.ccsPlatformSelect.title')"
+      width="narrow"
+      @close="closeCcsPlatformSelect"
+    >
+      <div class="space-y-4">
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          {{ t('keys.ccsPlatformSelect.description') }}
+        </p>
+        <div class="grid grid-cols-2 gap-3">
+          <button
+            v-for="option in ccsPlatformOptions"
+            :key="option.platform"
+            @click="handleCcsPlatformSelect(option.platform)"
+            class="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-gray-200 dark:border-dark-600 hover:border-primary-500 dark:hover:border-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all"
+          >
+            <span class="font-medium text-gray-900 dark:text-white">{{ option.label }}</span>
+            <span class="text-xs text-gray-500 dark:text-gray-400">{{ option.platform }}</span>
+          </button>
+        </div>
+      </div>
+      <template #footer>
+        <div class="flex justify-end">
+          <button @click="closeCcsPlatformSelect" class="btn btn-secondary">
+            {{ t('common.cancel') }}
+          </button>
+        </div>
+      </template>
+    </BaseDialog>
+
     <!-- CCS Client Selection Dialog for Antigravity -->
     <BaseDialog
       :show="showCcsClientSelect"
@@ -1323,9 +1355,18 @@ const showDeleteDialog = ref(false)
 const showResetQuotaDialog = ref(false)
 const showResetRateLimitDialog = ref(false)
 const showUseKeyModal = ref(false)
+const showCcsPlatformSelect = ref(false)
 const showCcsClientSelect = ref(false)
 const showColumnDropdown = ref(false)
 const pendingCcsRow = ref<ApiKey | null>(null)
+type CcsImportPlatform = Extract<GroupPlatform, 'anthropic' | 'openai' | 'gemini' | 'grok' | 'antigravity'>
+const ccsPlatformOptions: { platform: CcsImportPlatform; label: string }[] = [
+  { platform: 'anthropic', label: 'Claude' },
+  { platform: 'openai', label: 'Codex' },
+  { platform: 'gemini', label: 'Gemini' },
+  { platform: 'grok', label: 'Grok Build' },
+  { platform: 'antigravity', label: 'Antigravity' }
+]
 const selectedKey = ref<ApiKey | null>(null)
 const copiedKeyId = ref<number | null>(null)
 const groupSelectorKeyId = ref<number | null>(null)
@@ -1912,22 +1953,36 @@ const resetRateLimitUsage = async () => {
 }
 
 const importToCcswitch = (row: ApiKey) => {
-  const platform = row.group?.platform || 'anthropic'
+  pendingCcsRow.value = row
+  showCcsClientSelect.value = false
+  showCcsPlatformSelect.value = true
+}
 
-  // For antigravity platform, show client selection dialog
+const handleCcsPlatformSelect = (platform: CcsImportPlatform) => {
+  const row = pendingCcsRow.value
+  if (!row) return
+
+  showCcsPlatformSelect.value = false
   if (platform === 'antigravity') {
-    pendingCcsRow.value = row
     showCcsClientSelect.value = true
     return
   }
 
-  // For other platforms, execute directly
-  executeCcsImport(row, platform === 'gemini' ? 'gemini' : 'claude')
+  pendingCcsRow.value = null
+  executeCcsImport(row, platform, platform === 'gemini' ? 'gemini' : 'claude')
 }
 
-const executeCcsImport = (row: ApiKey, clientType: CcSwitchClientType) => {
+const closeCcsPlatformSelect = () => {
+  showCcsPlatformSelect.value = false
+  pendingCcsRow.value = null
+}
+
+const executeCcsImport = (
+  row: ApiKey,
+  platform: CcsImportPlatform,
+  clientType: CcSwitchClientType
+) => {
   const baseUrl = serviceBaseUrl
-  const platform = row.group?.platform || 'anthropic'
 
   const usageScript = `({
     request: {
@@ -1971,11 +2026,11 @@ const executeCcsImport = (row: ApiKey, clientType: CcSwitchClientType) => {
 }
 
 const handleCcsClientSelect = (clientType: CcSwitchClientType) => {
-  if (pendingCcsRow.value) {
-    executeCcsImport(pendingCcsRow.value, clientType)
+  const row = pendingCcsRow.value
+  closeCcsClientSelect()
+  if (row) {
+    executeCcsImport(row, 'antigravity', clientType)
   }
-  showCcsClientSelect.value = false
-  pendingCcsRow.value = null
 }
 
 const closeCcsClientSelect = () => {

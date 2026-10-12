@@ -45,6 +45,8 @@ export default {
     useReference: '用作参考图',
     download: '下载',
     preview: '流式预览',
+    fullscreenPreview: '全屏预览',
+    openPreview: '预览 {name}',
     generating: '正在生成图片…',
     interrupted: '上次生成在页面关闭前中断。',
     resultAlt: '「{prompt}」的第 {index} 张图片',

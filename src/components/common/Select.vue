@@ -6,7 +6,7 @@
       @click="toggle"
       :disabled="disabled"
       :aria-expanded="isOpen"
-      :aria-haspopup="true"
+      :aria-haspopup="$slots.footer ? 'dialog' : 'listbox'"
       :id="id"
       :aria-label="ariaLabel ?? 'Select option'"
       :aria-describedby="ariaDescribedby"
@@ -52,9 +52,10 @@
           v-if="isOpen"
           ref="dropdownRef"
           class="select-dropdown-portal"
-          :class="[instanceId]"
+          :class="[instanceId, $slots.footer && 'select-dropdown-with-footer']"
           :style="dropdownStyle"
-          role="listbox"
+          :role="$slots.footer ? 'dialog' : 'listbox'"
+          :aria-label="$slots.footer ? ariaLabel : undefined"
           @click.stop
           @mousedown.stop
           @keydown="onDropdownKeyDown"
@@ -74,7 +75,7 @@
           </div>
 
           <!-- Options list -->
-          <div class="select-options" ref="optionsListRef">
+          <div class="select-options" ref="optionsListRef" :role="$slots.footer ? 'listbox' : undefined" :aria-label="$slots.footer ? ariaLabel : undefined" :tabindex="$slots.footer ? -1 : undefined">
             <div
               v-for="(option, index) in filteredOptions"
               :key="`${typeof getOptionValue(option)}:${String(getOptionValue(option) ?? '')}`"
@@ -114,6 +115,9 @@
               {{ props.loading ? t('common.loading') : emptyTextDisplay }}
             </div>
           </div>
+          <div v-if="$slots.footer" ref="footerRef" class="select-footer">
+            <slot name="footer" :select="selectOption" :close="closeDropdown" />
+          </div>
         </div>
       </Transition>
     </Teleport>
@@ -121,11 +125,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick, useSlots } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Icon from '@/components/icons/Icon.vue'
 
 const { t } = useI18n()
+const slots = useSlots()
 
 // Instance ID for unique click-outside detection
 const instanceId = `select-${Math.random().toString(36).substring(2, 9)}`
@@ -189,6 +194,7 @@ const triggerRef = ref<HTMLButtonElement | null>(null)
 const searchInputRef = ref<HTMLInputElement | null>(null)
 const dropdownRef = ref<HTMLElement | null>(null)
 const optionsListRef = ref<HTMLElement | null>(null)
+const footerRef = ref<HTMLElement | null>(null)
 const dropdownPosition = ref<'bottom' | 'top'>('bottom')
 const triggerRect = ref<DOMRect | null>(null)
 const dropdownViewportPadding = 8
@@ -215,13 +221,15 @@ const dropdownStyle = computed(() => {
   if (!triggerRect.value) return {}
 
   const rect = triggerRect.value
-  const viewportRight = Math.max(dropdownViewportPadding, window.innerWidth - dropdownViewportPadding)
+  const viewport = slots.footer ? window.visualViewport : null
+  const viewportLeft = (viewport?.offsetLeft ?? 0) + dropdownViewportPadding
+  const viewportRight = Math.max(viewportLeft, (viewport?.offsetLeft ?? 0) + (viewport?.width ?? window.innerWidth) - dropdownViewportPadding)
+  const preferredMinWidth = Math.max(slots.footer ? 320 : dropdownMinimumWidth, rect.width)
   const left = Math.min(
-    Math.max(dropdownViewportPadding, rect.left),
-    viewportRight
+    Math.max(viewportLeft, rect.left),
+    slots.footer ? Math.max(viewportLeft, viewportRight - preferredMinWidth) : viewportRight
   )
   const availableWidth = Math.max(0, viewportRight - left)
-  const preferredMinWidth = Math.max(dropdownMinimumWidth, rect.width)
   const minWidth = Math.min(preferredMinWidth, availableWidth)
   const style: Record<string, string> = {
     position: 'fixed',
@@ -235,6 +243,12 @@ const dropdownStyle = computed(() => {
     style.bottom = `${window.innerHeight - rect.top + 4}px`
   } else {
     style.top = `${rect.bottom + 4}px`
+  }
+  if (slots.footer) {
+    const viewportTop = viewport?.offsetTop ?? 0
+    const viewportBottom = viewportTop + (viewport?.height ?? window.innerHeight)
+    const availableHeight = dropdownPosition.value === 'top' ? rect.top - viewportTop : viewportBottom - rect.bottom
+    style.maxHeight = `${Math.max(0, availableHeight - dropdownViewportPadding - 4)}px`
   }
 
   return style
@@ -352,10 +366,12 @@ const calculateDropdownPosition = () => {
   nextTick(() => {
     if (!dropdownRef.value || !triggerRect.value) return
     const dropdownHeight = dropdownRef.value.offsetHeight || 240
-    const spaceBelow = window.innerHeight - triggerRect.value.bottom
-    const spaceAbove = triggerRect.value.top
+    const viewport = slots.footer ? window.visualViewport : null
+    const viewportTop = viewport?.offsetTop ?? 0
+    const spaceBelow = viewportTop + (viewport?.height ?? window.innerHeight) - triggerRect.value.bottom
+    const spaceAbove = triggerRect.value.top - viewportTop
 
-    if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
+    if (slots.footer ? spaceAbove > spaceBelow : spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
       dropdownPosition.value = 'top'
     } else {
       dropdownPosition.value = 'bottom'
@@ -382,12 +398,17 @@ watch(isOpen, (open) => {
         : initialIdx
     }
 
-    if (isSearchable.value) {
-      nextTick(() => searchInputRef.value?.focus())
-    }
+    nextTick(() => {
+      if (isSearchable.value) searchInputRef.value?.focus()
+      else if (slots.footer) optionsListRef.value?.focus()
+    })
     // Add scroll listener to update position
     window.addEventListener('scroll', updateTriggerRect, { capture: true, passive: true })
     window.addEventListener('resize', calculateDropdownPosition)
+    if (slots.footer) {
+      window.visualViewport?.addEventListener('resize', calculateDropdownPosition)
+      window.visualViewport?.addEventListener('scroll', calculateDropdownPosition)
+    }
   } else {
     searchQuery.value = ''
     focusedIndex.value = -1
@@ -398,11 +419,17 @@ watch(isOpen, (open) => {
     }
     window.removeEventListener('scroll', updateTriggerRect, { capture: true })
     window.removeEventListener('resize', calculateDropdownPosition)
+    window.visualViewport?.removeEventListener('resize', calculateDropdownPosition)
+    window.visualViewport?.removeEventListener('scroll', calculateDropdownPosition)
   }
+})
+watch(() => props.disabled, (disabled) => {
+  if (disabled && slots.footer) isOpen.value = false
 })
 
 // 远程搜索：输入防抖后交给父组件请求（!isOpen 抑制关闭重置 searchQuery 触发的空 query）。
 watch(searchQuery, (query) => {
+  if (slots.footer && isOpen.value) focusedIndex.value = findNextEnabledIndex(0)
   if (!props.remote || !isOpen.value) return
   if (remoteSearchTimer) clearTimeout(remoteSearchTimer)
   remoteSearchTimer = setTimeout(() => {
@@ -411,12 +438,16 @@ watch(searchQuery, (query) => {
   }, REMOTE_SEARCH_DEBOUNCE_MS)
 })
 
+const closeDropdown = () => {
+  isOpen.value = false
+  triggerRef.value?.focus()
+}
+
 const selectOption = (option: any) => {
   const value = getOptionValue(option) ?? null
   emit('update:modelValue', value)
   emit('change', value, option)
-  isOpen.value = false
-  triggerRef.value?.focus()
+  closeDropdown()
 }
 
 const clearSelection = () => {
@@ -433,6 +464,20 @@ const onTriggerKeyDown = () => {
 }
 
 const onDropdownKeyDown = (e: KeyboardEvent) => {
+  if (e.isComposing || e.keyCode === 229) return
+  if (slots.footer && e.key === 'Tab') {
+    const controls = Array.from(dropdownRef.value?.querySelectorAll<HTMLElement>('input:not(:disabled), button:not(:disabled), a[href], [tabindex="0"]') ?? [])
+    const index = controls.indexOf(document.activeElement as HTMLElement)
+    const next = index + (e.shiftKey ? -1 : 1)
+    if (next >= 0 && next < controls.length) {
+      e.preventDefault()
+      controls[next].focus()
+    } else {
+      closeDropdown()
+    }
+    return
+  }
+  if (footerRef.value?.contains(e.target as Node) && e.key !== 'Escape') return
   switch (e.key) {
     case 'ArrowDown':
       e.preventDefault()
@@ -453,8 +498,7 @@ const onDropdownKeyDown = (e: KeyboardEvent) => {
       break
     case 'Escape':
       e.preventDefault()
-      isOpen.value = false
-      triggerRef.value?.focus()
+      closeDropdown()
       break
     case 'Tab':
       isOpen.value = false
@@ -496,6 +540,8 @@ onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
   window.removeEventListener('scroll', updateTriggerRect, { capture: true })
   window.removeEventListener('resize', calculateDropdownPosition)
+  window.visualViewport?.removeEventListener('resize', calculateDropdownPosition)
+  window.visualViewport?.removeEventListener('scroll', calculateDropdownPosition)
   if (remoteSearchTimer) {
     clearTimeout(remoteSearchTimer)
     remoteSearchTimer = null
@@ -610,6 +656,35 @@ onUnmounted(() => {
 .select-dropdown-portal .select-empty {
   @apply px-4 py-8 text-center text-sm;
   @apply text-gray-500 dark:text-dark-400;
+}
+
+.select-dropdown-with-footer {
+  display: flex;
+  flex-direction: column;
+  background: var(--app-surface);
+  border-color: var(--app-border);
+  color: var(--app-text);
+}
+
+.select-dropdown-with-footer .select-search,
+.select-dropdown-with-footer .select-footer {
+  flex-shrink: 0;
+  border-color: var(--app-border);
+}
+
+.select-dropdown-with-footer .select-options {
+  min-height: 0;
+}
+
+.select-dropdown-with-footer .select-footer {
+  border-top: 1px solid var(--app-border);
+  padding: 10px 12px;
+}
+
+@media (max-width: 639px) {
+  .select-dropdown-with-footer .select-search-input {
+    font-size: 16px;
+  }
 }
 
 .select-dropdown-enter-active,
